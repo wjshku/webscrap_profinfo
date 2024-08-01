@@ -1,0 +1,172 @@
+---
+title: 'WebScrapping: A Project to Gather Information about Research Positions'
+author: 'Junshi Wang'
+date: "26 Jul 2024"
+output:
+  html_document:
+    fig_height: 4
+    fig_width: 5
+    highlight: tango
+    mathjax: null
+    number_sections: yes
+    theme: paper
+    toc: yes
+    toc_depth: 2
+    html_notebook: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+options(width=90)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+# Introduction
+
+To scrap down the information of professors and research positions.
+
+## Sample Code
+
+Learnt from gpt and Zhang AiJun 3622 Lecture 9.
+
+```{r eval=FALSE}
+library(rvest)
+url <- "http://books.toscrape.com/catalogue/category/books/travel_2/index.html"
+webpage <- read_html(url)
+```
+
+```{r eval=FALSE}
+titles <- webpage %>%
+  html_nodes("h3 a") %>%
+  html_text()
+urls <- webpage %>%
+  html_nodes(".image_container a") %>%
+  html_attr("href")
+prices <- webpage %>%
+  html_nodes("p.price_color") %>%
+  html_text()
+# Extract ratings, prices, and availability similarly
+```
+
+# NUS CS Professors
+
+```{r eval=FALSE}
+library(rvest)
+url <- "http://sem.bjtu.edu.cn/lists-szjs.html"
+url <- "https://www.comp.nus.edu.sg/cs/research/ai/people/"
+webpage <- read_html(url)
+```
+
+```{r eval=FALSE}
+names <- webpage %>%
+  html_nodes("b.ng-binding") %>%
+  html_text()
+urls <- webpage %>%
+  html_nodes("div.stf_name ng-scope a") %>%
+  html_attr("href")
+# Extract ratings, prices, and availability similarly
+```
+
+```{r}
+test <- webpage %>%
+  html_nodes("body")
+library(rvest)
+library(dplyr)
+
+pg <- read_html(url)
+maincontent <- html_nodes(pg, '#post-15743')
+web_character <- maincontent %>% as.character()
+value <- "script"
+result <- grepl(value, web_character, fixed = TRUE)  # Returns TRUE
+print(result)
+```
+
+```{r}
+test <- webpage %>%
+  html_nodes("body")
+library(rvest)
+library(dplyr)
+
+pg <- read_html(url)
+maincontent <- html_nodes(pg, '#post-15743')
+jscript <- (maincontent %>% html_nodes('script'))[6] %>% as.character()
+substr(jscript, start=1500, stop=1600)
+# Extract ratings, prices, and availability similarly
+```
+
+```{r}
+getsubstr <- function(string, start, len){
+  return(substr(string, start=start, stop=(start+len)))
+}
+
+# Example string and substring
+main_string <- jscript
+substring_to_find <- "scope.allStaffs ="
+
+# Find the position of the substring
+position <- regexpr(substring_to_find, main_string)
+
+# Check if the substring was found
+if (position != -1) {
+  # Extract all characters after the substring
+  result <- substring(main_string, position + nchar(substring_to_find))
+  print(getsubstr(result,1,100))
+} else {
+  print("Substring not found.")
+}
+```
+
+## Replace backslashes with a blank space
+
+```{r}
+infolist <- gsub("\n", "", result)
+infolist <- gsub("\t", "", infolist)
+infolist <- gsub("\\", "", infolist, fixed=TRUE)
+# Print the result
+print(getsubstr(infolist,2,100))
+```
+
+```{r}
+# Example character string
+input_string <- getsubstr(infolist,2,nchar(infolist[[1]]))
+
+# Step 1: Replace escaped quotes with actual quotes
+cleaned_string <- gsub('\\"', '"', input_string)
+
+# Step 2: Remove leading and trailing brackets
+cleaned_string <- gsub("^\\[|\\]$", "", cleaned_string)
+
+# Step 3: Split the string into individual objects
+object_strings <- unlist(strsplit(cleaned_string, "},\\{"))
+
+# Ensure each object string is properly enclosed with curly braces
+object_strings <- paste0("{", gsub("^\\{|\\}$", "", object_strings), "}")
+
+# Function to parse each object string
+parse_object <- function(object_string) {
+  key_value_pairs <- unlist(strsplit(object_string, ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", perl = TRUE))
+  parsed_list <- list()
+  
+  for (pair in key_value_pairs) {
+    key_value <- unlist(strsplit(pair, ": ", fixed = TRUE))
+    key <- trimws(key_value[1])
+    value <- trimws(key_value[2])
+    value <- gsub('^"|"$', '', value)
+    parsed_list[[key]] <- value
+  }
+  
+  return(parsed_list)
+}
+
+# Step 4: Apply the parsing function to each object string
+parsed_objects <- lapply(object_strings, parse_object)
+
+# Print the resulting list of lists
+print(parsed_objects[2])
+```
+
+```{r}
+commoncolnames <- c("X.name","title","Area","Bio")
+do.call(rbind, lapply(parsed_objects, function(x){as.data.frame(x)[commoncolnames]}))
+```
