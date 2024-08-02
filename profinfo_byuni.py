@@ -12,6 +12,7 @@ def get_unique_df(df:pd.DataFrame,key:str)->pd.DataFrame:
         name = df[key][idx]
         unique_name_idx_dict[name] = idx
     df = df.iloc[list(unique_name_idx_dict.values())]
+    df.reset_index(inplace=True,drop=True)
     return df
 
 def get_website(url:str):
@@ -155,7 +156,7 @@ class nus_profs():
         prof_info = (pd.DataFrame(prof_info))
         return prof_info
 
-    def get_filename(self, infotype):
+    def get_filename(self, infotype='basic'):
         return f'{self.univ}prof_{infotype}'
 
     def store_prof_info(self, infotype):
@@ -176,20 +177,22 @@ class nus_profs():
             "researchinterest": lambda x: x.strip("[]").replace("'","").split(", "),
             'publication': lambda x: x.strip("[]").replace("'","").split(", "),
         }
-        df = pd.read_csv(f'{work_dirs}/{filename}.csv',converters = converter_dict)
-        df = df.set_index('Name')
+        df = pd.read_csv(f'{work_dirs}/{filename}.csv',index_col=0,converters = converter_dict)
+        df = df.reset_index(drop=True)
+        print(f'Read {infotype} Information for {self.univ}')
+        print(df)
         if infotype == 'basic':
             self.basicinfo = df
         else:
             self.detailedinfo = df
-
-    def read_prof_info(self,infotype='basic'):
-        return f'{self.univ}prof_{infotype}'
     
 def main(argv):
     nus_professors = nus_profs()
-    nus_professors.get_prof_basicinfo()
-    nus_professors.store_prof_info('basic')
+    # nus_professors.get_prof_basicinfo()
+    # nus_professors.store_prof_info('basic')
+    nus_professors.read_prof_info('basic')
+    nus_professors.get_prof_detailedinfo()
+    nus_professors.store_prof_info('detailed')
 
 import sys
 if __name__ == "__main__":
